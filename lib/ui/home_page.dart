@@ -10,12 +10,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool showCompleted = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Tasks'),
         centerTitle: true,
+        actions: <Widget>[_buildCompletedOnlySwitch()],
       ),
       body: Column(
         children: <Widget>[
@@ -27,23 +30,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   StreamBuilder<List<Task>> _buildTaskList(BuildContext context) {
-    final database = Provider.of<AppDatabase>(context);
+    final dao = Provider.of<TaskDao>(context);
     return StreamBuilder(
-      stream: database.watchAllTasks(),
+      stream: showCompleted ? dao.watchCompletedTasks() : dao.watchAllTasks(),
       builder: (context, snapshot) {
         final tasks = snapshot.data ?? List();
+
         return ListView.builder(
           itemCount: tasks.length,
           itemBuilder: (_, index) {
             final itemTask = tasks[index];
-            return _buildListItem(itemTask, database);
+            return _buildListItem(itemTask, dao);
           },
         );
       },
     );
   }
 
-  Widget _buildListItem(Task itemTask, AppDatabase database) {
+  Widget _buildListItem(Task itemTask, TaskDao database) {
     return Slidable(
       actionPane: SlidableDrawerActionPane(),
       secondaryActions: <Widget>[
@@ -61,6 +65,23 @@ class _HomePageState extends State<HomePage> {
             database.updateTask(itemTask.copyWith(completed: value)),
         value: itemTask.completed,
       ),
+    );
+  }
+
+  Row _buildCompletedOnlySwitch() {
+    return Row(
+      children: <Widget>[
+        Text('Completed only'),
+        Switch(
+          value: showCompleted,
+          activeColor: Colors.white,
+          onChanged: (newValue) {
+            setState(() {
+              showCompleted = newValue;
+            });
+          },
+        ),
+      ],
     );
   }
 }

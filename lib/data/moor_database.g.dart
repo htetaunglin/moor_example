@@ -12,7 +12,11 @@ class Task extends DataClass implements Insertable<Task> {
   final String name;
   final DateTime dueDate;
   final bool completed;
-  Task({this.id, this.name, this.dueDate, this.completed});
+  Task(
+      {@required this.id,
+      @required this.name,
+      this.dueDate,
+      @required this.completed});
   factory Task.fromData(Map<String, dynamic> data, GeneratedDatabase db,
       {String prefix}) {
     final effectivePrefix = prefix ?? '';
@@ -107,10 +111,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
   });
   TasksCompanion.insert({
     this.id = const Value.absent(),
-    this.name = const Value.absent(),
+    @required String name,
     this.dueDate = const Value.absent(),
     this.completed = const Value.absent(),
-  });
+  }) : name = Value(name);
   TasksCompanion copyWith(
       {Value<int> id,
       Value<String> name,
@@ -134,7 +138,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   @override
   GeneratedIntColumn get id => _id ??= _constructId();
   GeneratedIntColumn _constructId() {
-    return GeneratedIntColumn('id', $tableName, true,
+    return GeneratedIntColumn('id', $tableName, false,
         hasAutoIncrement: true, declaredAsPrimaryKey: true);
   }
 
@@ -143,7 +147,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   @override
   GeneratedTextColumn get name => _name ??= _constructName();
   GeneratedTextColumn _constructName() {
-    return GeneratedTextColumn('name', $tableName, true,
+    return GeneratedTextColumn('name', $tableName, false,
         minTextLength: 1, maxTextLength: 50);
   }
 
@@ -164,7 +168,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   @override
   GeneratedBoolColumn get completed => _completed ??= _constructCompleted();
   GeneratedBoolColumn _constructCompleted() {
-    return GeneratedBoolColumn('completed', $tableName, true,
+    return GeneratedBoolColumn('completed', $tableName, false,
         defaultValue: Constant(false));
   }
 
@@ -242,6 +246,39 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
   $TasksTable _tasks;
   $TasksTable get tasks => _tasks ??= $TasksTable(this);
+  TaskDao _taskDao;
+  TaskDao get taskDao => _taskDao ??= TaskDao(this as AppDatabase);
   @override
   List<TableInfo> get allTables => [tasks];
+}
+
+// **************************************************************************
+// DaoGenerator
+// **************************************************************************
+
+mixin _$TaskDaoMixin on DatabaseAccessor<AppDatabase> {
+  $TasksTable get tasks => db.tasks;
+  Task _rowToTask(QueryRow row) {
+    return Task(
+      id: row.readInt('id'),
+      name: row.readString('name'),
+      dueDate: row.readDateTime('due_date'),
+      completed: row.readBool('completed'),
+    );
+  }
+
+  Selectable<Task> completedTasksGeneratedQuery() {
+    return customSelectQuery(
+        'SELECT * FROM tasks WHERE completed = 1 ORDER BY due_date DESC, name;',
+        variables: [],
+        readsFrom: {tasks}).map(_rowToTask);
+  }
+
+  Future<List<Task>> completedTasksGenerated() {
+    return completedTasksGeneratedQuery().get();
+  }
+
+  Stream<List<Task>> watchCompletedTasksGenerated() {
+    return completedTasksGeneratedQuery().watch();
+  }
 }
